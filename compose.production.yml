@@ -1,0 +1,21 @@
+services:
+  client:
+    image: macdent-ai-client-production
+    build:
+      context: .
+      dockerfile: ./build/production/client/Dockerfile
+    networks:
+      - ai-chatbot
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - ai-chatbot
+
+networks:
+  ai-chatbot:
+    driver: bridge
