@@ -1,10 +1,12 @@
 package main
 
-import "macdent-ai-chatbot/store"
+import (
+	"macdent-ai-chatbot/config"
+	"macdent-ai-chatbot/store"
+)
 
 func main() {
-	_ = store.New(&store.QdrantConfig{
-		Host: "localhost",
-		Port: 6333,
-	})
+	cfg := config.NewConfig()
+
+	_ = store.NewQdrantClient(cfg.Qdrant)
 }
