@@ -25,6 +25,25 @@ services:
     networks:
       - ai-chatbot
 
+  nginx:
+    build:
+      context: .
+      dockerfile: ./build/development/nginx/Dockerfile
+    environment:
+      - APP_INTERNAL_PORT=${APP_INTERNAL_PORT}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./build/development/nginx/nginx.conf:/etc/nginx/templates/default.conf.template
+      - ./build/development/nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf
+      - ./build/development/nginx/keys/STAR_macdent_kz_combined.crt:/etc/nginx/ssl2/STAR_macdent_kz_combined.crt
+      - ./build/development/nginx/keys/macdent.kz.key:/etc/nginx/ssl2/macdent.kz.key
+    depends_on:
+      - client
+    networks:
+      - ai-chatbot
+
 networks:
   ai-chatbot:
     driver: bridge

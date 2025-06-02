@@ -47,3 +47,6 @@ sh:
 
 shr:
 	docker compose -f $(COMPOSE_FILE) exec -u root client sh
+
+cmg:
+	docker rmi -f macdent-ai-chatbot-nginx macdent-ai-client-development

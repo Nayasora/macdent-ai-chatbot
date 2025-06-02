@@ -12,16 +12,40 @@ services:
     environment:
       - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
       - QDRANT__SERVICE__ENABLE_TLS=1
-      - QDRANT__TLS__CERT=build/production/qdrant/cert.pem
-      - QDRANT__TLS__KEY=build/production/qdrant/key.pem
+      - QDRANT__TLS__CERT=/certs/cert.pem
+      - QDRANT__TLS__KEY=/certs/key.pem
     ports:
       - "6333:6333"
       - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+      - ./build/production/qdrant:/certs
+    networks:
+      - ai-chatbot
+
+  nginx:
+    build:
+      context: .
+      dockerfile: ./build/production/nginx/Dockerfile
+    environment:
+      - APP_INTERNAL_PORT=${APP_INTERNAL_PORT}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./build/production/nginx/nginx.conf:/etc/nginx/templates/default.conf.template
+      - ./build/production/nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf
+      - ./build/production/nginx/keys/STAR_macdent_kz_combined.crt:/etc/nginx/ssl2/STAR_macdent_kz_combined.crt
+      - ./build/production/nginx/keys/macdent.kz.key:/etc/nginx/ssl2/macdent.kz.key
+    depends_on:
+      - client
     networks:
       - ai-chatbot
 
 networks:
   ai-chatbot:
     driver: bridge
+
+volumes:
+  qdrant_data:
+      driver: local
