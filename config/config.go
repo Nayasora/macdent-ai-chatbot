@@ -8,8 +8,9 @@ type Config struct {
 
 // QdrantConfig - настройки подключения к Qdrant
 type QdrantConfig struct {
-	Host string
-	Port int
+	Host   string
+	Port   int
+	ApiKey string
 }
 
 // AppConfig - общие настройки приложения
@@ -25,8 +26,9 @@ func NewConfig() *Config {
 
 	return &Config{
 		Qdrant: &QdrantConfig{
-			Host: env.MustString("QDRANT_HOST"),
-			Port: env.MustInt("QDRANT_PORT"),
+			Host:   env.MustString("QDRANT_HOST"),
+			Port:   env.MustInt("QDRANT_PORT"),
+			ApiKey: env.MustString("QDRANT_API_KEY"),
 		},
 		App: &AppConfig{
 			Environment: env.MustString("APP_ENV"),

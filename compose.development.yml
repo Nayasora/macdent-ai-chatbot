@@ -11,10 +11,17 @@ services:
 
   qdrant:
     image: qdrant/qdrant:latest
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
+      - QDRANT__SERVICE__ENABLE_TLS=1
+      - QDRANT__TLS__CERT=/certs/cert.pem
+      - QDRANT__TLS__KEY=/certs/key.pem
     ports:
       - "6333:6333"
+      - "6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
+      - ./build/development/qdrant:/certs
     networks:
       - ai-chatbot
 
