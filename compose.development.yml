@@ -44,10 +44,25 @@ services:
     networks:
       - ai-chatbot
 
+  postgres:
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ai-chatbot
+
 networks:
   ai-chatbot:
     driver: bridge
 
 volumes:
   qdrant_data:
-      driver: local
+    driver: local
+  postgres_data:
+    driver: local
