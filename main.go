@@ -1,12 +1,14 @@
 package main
 
-import (
-	"macdent-ai-chatbot/api"
-	"macdent-ai-chatbot/config"
-)
+import "macdent-ai-chatbot/v2/api"
+import "macdent-ai-chatbot/v2/configs"
 
 func main() {
-	cfg := config.NewConfig()
+	config := configs.NewConfig(
+		configs.NewEnv(".env"),
+	)
 
-	api.NewServer(cfg.ApiServer).Run()
+	server := api.NewServer(config)
+	server.Setup()
+	server.Run()
 }
