@@ -1,20 +1,21 @@
 package agent
 
 import (
+	"gorm.io/gorm"
 	"macdent-ai-chatbot/v2/databases"
 	"macdent-ai-chatbot/v2/models"
 )
 
 type UpdateAgentRequest struct {
 	AgentID      string             `json:"agent_id" validate:"required"`
-	APIKey       string             `json:"api_key" gorm:"not null"`
-	Model        string             `json:"model" gorm:"not null"`
-	SystemPrompt string             `json:"system_prompt" gorm:"not null"`
-	UserPrompt   string             `json:"user_prompt" gorm:"not null"`
-	ContextSize  int                `json:"context_size" gorm:"not null"`
-	Temperature  float32            `json:"temperature" gorm:"not null"`
-	TopP         float32            `json:"top_p" gorm:"not null"`
-	MaxTokens    int                `json:"max_tokens" gorm:"not null"`
+	APIKey       string             `json:"api_key"`
+	Model        string             `json:"model"`
+	SystemPrompt string             `json:"system_prompt"`
+	UserPrompt   string             `json:"user_prompt"`
+	ContextSize  int                `json:"context_size"`
+	Temperature  float32            `json:"temperature"`
+	TopP         float32            `json:"top_p"`
+	MaxTokens    int                `json:"max_tokens"`
 	Permissions  PermissionsRequest `json:"permissions"`
 }
 
@@ -51,6 +52,10 @@ func (s *Service) UpdateAgent(request *UpdateAgentRequest, postgres *databases.P
 		agent.MaxTokens = request.MaxTokens
 	}
 
+	agent.Permission.Stomatology = request.Permissions.Stomatology
+	agent.Permission.Doctors = request.Permissions.Doctors
+	agent.Permission.Appointments = request.Permissions.Appointments
+
 	tx := postgres.DB.Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -59,28 +64,9 @@ func (s *Service) UpdateAgent(request *UpdateAgentRequest, postgres *databases.P
 		}
 	}()
 
-	if agent.Permissions == nil {
-		agent.Permissions = &models.Permission{
-			AgentID:      agent.ID,
-			Stomatology:  request.Permissions.Stomatology,
-			Doctors:      request.Permissions.Doctors,
-			Appointments: request.Permissions.Appointments,
-		}
-	} else {
-		agent.Permissions.Stomatology = request.Permissions.Stomatology
-		agent.Permissions.Doctors = request.Permissions.Doctors
-		agent.Permissions.Appointments = request.Permissions.Appointments
-	}
-
-	if err := tx.Save(agent).Error; err != nil {
+	if err := tx.Session(&gorm.Session{FullSaveAssociations: true}).Save(agent).Error; err != nil {
 		tx.Rollback()
 		s.logger.Fatalf("обновление агента: %v", err)
-		return nil
-	}
-
-	if err := tx.Save(agent.Permissions).Error; err != nil {
-		tx.Rollback()
-		s.logger.Fatalf("обновление разрешений агента: %v", err)
 		return nil
 	}
 

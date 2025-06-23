@@ -45,7 +45,7 @@ func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.P
 
 	if err := tx.Create(agent).Error; err != nil {
 		tx.Rollback()
-		s.logger.Fatalf("создание agent: %v", err)
+		s.logger.Fatalf("создание агента: %v", err)
 	}
 
 	permission := &models.Permission{
@@ -57,7 +57,12 @@ func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.P
 
 	if err := tx.Create(permission).Error; err != nil {
 		tx.Rollback()
-		s.logger.Fatalf("создание permission: %v", err)
+		s.logger.Fatalf("создание разрешений: %v", err)
+	}
+
+	if err := tx.Model(agent).Association("Permission").Find(&agent.Permission); err != nil {
+		tx.Rollback()
+		s.logger.Fatalf("загрузка разрешений: %v", err)
 	}
 
 	if err := tx.Commit().Error; err != nil {
