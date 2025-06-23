@@ -1,6 +1,8 @@
 package api
 
 import (
+	"errors"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"macdent-ai-chatbot/v2/configs"
@@ -9,9 +11,10 @@ import (
 )
 
 type AgentHandler struct {
-	config   *configs.ApiServerConfig
-	postgres *databases.PostgresDatabase
-	qdrant   *databases.QdrantDatabase
+	config    *configs.ApiServerConfig
+	postgres  *databases.PostgresDatabase
+	qdrant    *databases.QdrantDatabase
+	validator *validator.Validate
 }
 
 func NewAgentHandler(config *configs.ApiServerConfig) *AgentHandler {
@@ -19,18 +22,31 @@ func NewAgentHandler(config *configs.ApiServerConfig) *AgentHandler {
 	qdrant := databases.NewQdrant(config.Qdrant)
 
 	return &AgentHandler{
-		config:   config,
-		postgres: postgres,
-		qdrant:   qdrant,
+		config:    config,
+		postgres:  postgres,
+		qdrant:    qdrant,
+		validator: validator.New(),
 	}
 }
 
 func (h *AgentHandler) CreateAgent(c fiber.Ctx) error {
 	var request agent.CreateAgentRequest
+
 	if err := c.Bind().JSON(&request); err != nil {
 		return c.Status(400).JSON(fiber.Map{
 			"ошибка": "Неправильное тело запроса",
 			"детали": err.Error(),
+		})
+	}
+
+	err := h.validator.Struct(&request)
+	var validationErrors validator.ValidationErrors
+	errors.As(err, &validationErrors)
+
+	if err != nil && len(validationErrors) > 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неправильные данные запроса",
+			"детали": validationErrors.Error(),
 		})
 	}
 

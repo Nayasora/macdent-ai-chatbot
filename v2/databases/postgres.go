@@ -24,13 +24,7 @@ func NewPostgres(config *configs.PostgresConfig) *PostgresDatabase {
 		logger.Errorf("postgres клиент: %v", err)
 	}
 
-	err = db.AutoMigrate(
-		&models.Agent{},
-		&models.Dialog{},
-		&models.KnowledgeFile{},
-		&models.KnowledgePrompt{},
-		&models.Permission{},
-	)
+	err = models.InitMigration(db)
 
 	if err != nil {
 		logger.Errorf("postgres миграция: %v", err)
