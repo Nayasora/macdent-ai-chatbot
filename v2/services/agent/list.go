@@ -23,7 +23,6 @@ func (s *Service) GetAgent(agentID uuid.UUID, postgres *databases.PostgresDataba
 		First(&agent).Error
 
 	if err != nil {
-
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			s.logger.Infof("агент с ID %s не найден", agentID)
 			return nil, utils.NewUserErrorResponse(

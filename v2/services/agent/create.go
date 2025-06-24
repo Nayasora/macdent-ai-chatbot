@@ -6,6 +6,11 @@ import (
 	"macdent-ai-chatbot/v2/utils"
 )
 
+type MetadataRequest struct {
+	Stomatology int    `json:"stomatology" validate:"required"`
+	AccessToken string `json:"access_token" validate:"required"`
+}
+
 type CreateAgentRequest struct {
 	APIKey              string             `json:"api_key" validate:"required,min=144"`
 	Model               string             `json:"model" validate:"required"`
@@ -15,6 +20,7 @@ type CreateAgentRequest struct {
 	Temperature         float64            `json:"temperature"`
 	TopP                float64            `json:"top_p"`
 	MaxCompletionTokens int                `json:"max_completion_tokens"`
+	Metadata            MetadataRequest    `json:"metadata"`
 	Permissions         PermissionsRequest `json:"permissions"`
 }
 
@@ -34,6 +40,9 @@ func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.P
 		Temperature:         request.Temperature,
 		MaxCompletionTokens: request.MaxCompletionTokens,
 	}
+
+	agent.Metadata.Stomatology = request.Metadata.Stomatology
+	agent.Metadata.AccessToken = request.Metadata.AccessToken
 
 	tx := postgres.DB.Begin()
 	defer func() {

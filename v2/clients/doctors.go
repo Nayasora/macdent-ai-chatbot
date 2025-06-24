@@ -31,7 +31,7 @@ type GetDoctorsResponse struct {
 func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErrorResponse) {
 	logger := utils.NewLogger("clients:getDoctors")
 
-	baseURL := BaseURL + "doctors/find"
+	baseURL := BaseURL + "doctor/find"
 
 	params := url.Values{}
 	params.Add("access_token", request.AccessToken)
@@ -40,6 +40,8 @@ func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErr
 	}
 
 	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+
+	logger.Infof("получение списка врачей по URL: %s", fullURL)
 
 	req, err := http.NewRequest(http.MethodGet, fullURL, nil)
 	if err != nil {

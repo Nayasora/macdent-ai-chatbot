@@ -111,23 +111,3 @@ func (s *Service) QueryCompletion(agent *models.Agent, completionParams openai.C
 
 	return completion, nil
 }
-
-func (s *Service) processToolCalls(
-	currentAgent *models.Agent,
-	messages []openai.ChatCompletionMessageParamUnion,
-	assistantMessage openai.ChatCompletionMessage,
-) (string, *utils.UserErrorResponse) {
-	var toolResults []openai.ChatCompletionMessageParamUnion
-
-	toolResults = append(toolResults, messages...)
-	toolResults = append(toolResults, assistantMessage)
-
-	chatCompletionParams := s.GetChatCompletionParams(currentAgent, toolResults)
-	completionWithResults, err := s.QueryCompletion(currentAgent, chatCompletionParams)
-
-	if err != nil {
-		return "", err
-	}
-
-	return completionWithResults.Choices[0].Message.Content, nil
-}

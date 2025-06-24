@@ -18,6 +18,7 @@ type UpdateAgentRequest struct {
 	Temperature         *float64           `json:"temperature"`
 	TopP                *float64           `json:"top_p"`
 	MaxCompletionTokens *int               `json:"max_completion_tokens"`
+	Metadata            *MetadataRequest   `json:"metadata"`
 	Permissions         PermissionsRequest `json:"permissions"`
 }
 
@@ -53,6 +54,15 @@ func (s *Service) UpdateAgent(request *UpdateAgentRequest, postgres *databases.P
 	}
 	if request.MaxCompletionTokens != nil {
 		agent.MaxCompletionTokens = *request.MaxCompletionTokens
+	}
+
+	if request.Metadata != nil {
+		if request.Metadata.Stomatology != 0 {
+			agent.Metadata.Stomatology = request.Metadata.Stomatology
+		}
+		if request.Metadata.AccessToken != "" {
+			agent.Metadata.AccessToken = request.Metadata.AccessToken
+		}
 	}
 
 	agent.Permission.Stomatology = request.Permissions.Stomatology
