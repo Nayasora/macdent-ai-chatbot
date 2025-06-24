@@ -7,42 +7,55 @@ import (
 	"macdent-ai-chatbot/v2/utils"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
-type GetDoctorsRequest struct {
-	AccessToken string `json:"access_token"`
-	FullName    string `json:"name"`
+type CreateAppointmentRequest struct {
+	AccessToken          string `json:"access_token"`
+	DoctorID             int    `json:"doctor"`
+	PatientID            int    `json:"patient"`
+	AppointmentDate      string `json:"date"`
+	AppointmentStartTime string `json:"start"`
+	AppointmentEndTime   string `json:"end"`
 }
 
-type Doctor struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Specialnosti []string `json:"specialnosti"`
+type AppointmentInfo struct {
+	ID         int    `json:"id"`
+	DoctorID   int    `json:"doctor"`
+	PatientID  int    `json:"patient"`
+	Date       string `json:"date"`
+	StartTime  string `json:"start"`
+	EndTime    string `json:"end"`
+	Status     int    `json:"status"`
+	Complaint  string `json:"zhaloba"`
+	Comment    string `json:"comment"`
+	IsFirst    bool   `json:"isFirst"`
+	Cabinet    string `json:"cabinet"`
+	ScheduleID string `json:"rasp"`
 }
 
-type GetDoctorsResponse struct {
-	Doctors  []Doctor `json:"doctors"`
-	Count    string   `json:"count"`
-	AtPage   int      `json:"atPage"`
-	MaxPage  int      `json:"maxPage"`
-	Response int      `json:"response"`
+type CreateAppointmentResponse struct {
+	Appointment AppointmentInfo `json:"zapis"`
+	Response    int             `json:"response"`
 }
 
-func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErrorResponse) {
-	logger := utils.NewLogger("clients:getDoctors")
+func CreateAppointment(request CreateAppointmentRequest) (*CreateAppointmentResponse, *utils.UserErrorResponse) {
+	logger := utils.NewLogger("clients:createAppointment")
 
-	baseURL := BaseURL + "doctor/find"
+	baseURL := BaseURL + "zapis/add"
 
 	params := url.Values{}
 	params.Add("access_token", request.AccessToken)
-	if request.FullName != "" {
-		params.Add("name", request.FullName)
-	}
+	params.Add("doctor", strconv.Itoa(request.DoctorID))
+	params.Add("patient", strconv.Itoa(request.PatientID))
+	params.Add("date", request.AppointmentDate)
+	params.Add("start", request.AppointmentStartTime)
+	params.Add("end", request.AppointmentEndTime)
 
 	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
-	logger.Infof("получение списка врачей по URL: %s", fullURL)
+	logger.Infof("создание записи на приём по URL: %s", fullURL)
 
-	req, err := http.NewRequest(http.MethodGet, fullURL, nil)
+	req, err := http.NewRequest(http.MethodPost, fullURL, nil)
 	if err != nil {
 		logger.Errorf("создание запроса: %v", err)
 		return nil, utils.NewUserErrorResponse(
@@ -90,7 +103,7 @@ func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErr
 		)
 	}
 
-	var response GetDoctorsResponse
+	var response CreateAppointmentResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		logger.Errorf("десериализация ответа: %v", err)
 		return nil, utils.NewUserErrorResponse(

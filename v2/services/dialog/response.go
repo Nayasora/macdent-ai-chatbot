@@ -46,9 +46,19 @@ func (s *Service) ResponseDialogNewMessageRequest(
 	s.logger.Infof("сообщения для OpenAI: %v", messages)
 
 	toolService := tool.NewService(currentAgent)
-	chatCompletionParams := s.GetChatCompletionParams(currentAgent, messages)
+
+	// Рекурсивно обрабатываем сообщения и инструменты
+	return s.processMessagesWithTools(currentAgent, messages, toolService)
+}
+
+func (s *Service) processMessagesWithTools(
+	agent *models.Agent,
+	messages []openai.ChatCompletionMessageParamUnion,
+	toolService *tool.Service,
+) (string, *utils.UserErrorResponse) {
+	chatCompletionParams := s.GetChatCompletionParams(agent, messages)
 	chatCompletionParams.Tools = openai.F(toolService.GetToolsFunctions())
-	completion, err := s.QueryCompletion(currentAgent, chatCompletionParams)
+	completion, err := s.QueryCompletion(agent, chatCompletionParams)
 
 	if err != nil {
 		return "", err
@@ -58,20 +68,15 @@ func (s *Service) ResponseDialogNewMessageRequest(
 	s.logger.Infof("ответ OpenAI: %v", toolMessage)
 
 	if toolService.HasToolCalls(toolMessage.ToolCalls) {
+		// Выполняем инструменты и получаем обновленный список сообщений
+		updatedMessages := toolService.ExecuteToolCalls(messages, toolMessage)
 
-		toolResults := toolService.ExecuteToolCalls(messages, toolMessage)
-
-		chatCompletionParams := s.GetChatCompletionParams(currentAgent, toolResults)
-		completionWithResults, err := s.QueryCompletion(currentAgent, chatCompletionParams)
-
-		if err != nil {
-			return "", err
-		}
-
-		return completionWithResults.Choices[0].Message.Content, nil
+		// Рекурсивно обрабатываем обновленный список сообщений
+		return s.processMessagesWithTools(agent, updatedMessages, toolService)
 	}
 
-	return completion.Choices[0].Message.Content, nil
+	// Если нет вызовов инструментов, возвращаем окончательный ответ
+	return toolMessage.Content, nil
 }
 
 func (s *Service) GetChatCompletionParams(agent *models.Agent, messages []openai.ChatCompletionMessageParamUnion) openai.ChatCompletionNewParams {

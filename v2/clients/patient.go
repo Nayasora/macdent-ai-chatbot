@@ -2,47 +2,37 @@ package clients
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"macdent-ai-chatbot/v2/utils"
 	"net/http"
-	"net/url"
 )
 
-type GetDoctorsRequest struct {
+type CreatePatientRequest struct {
 	AccessToken string `json:"access_token"`
-	FullName    string `json:"name"`
+	Name        string `json:"name"`
 }
 
-type Doctor struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Specialnosti []string `json:"specialnosti"`
+type PatientInfo struct {
+	Name    string `json:"name"`
+	ID      int    `json:"id"`
+	Comment string `json:"comment"`
 }
 
-type GetDoctorsResponse struct {
-	Doctors  []Doctor `json:"doctors"`
-	Count    string   `json:"count"`
-	AtPage   int      `json:"atPage"`
-	MaxPage  int      `json:"maxPage"`
-	Response int      `json:"response"`
+type CreatePatientResponse struct {
+	Patient  PatientInfo `json:"patient"`
+	Response int         `json:"response"`
 }
 
-func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErrorResponse) {
-	logger := utils.NewLogger("clients:getDoctors")
+func CreatePatient(request CreatePatientRequest) (*CreatePatientResponse, *utils.UserErrorResponse) {
+	logger := utils.NewLogger("clients:createPatient")
 
-	baseURL := BaseURL + "doctor/find"
+	baseURL := BaseURL + "patient/add"
+	logger.Infof("создание пациента через URL: %s", baseURL)
 
-	params := url.Values{}
-	params.Add("access_token", request.AccessToken)
-	if request.FullName != "" {
-		params.Add("name", request.FullName)
-	}
+	reqURL := baseURL + "?access_token=" + request.AccessToken + "&name=" + request.Name
 
-	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
-	logger.Infof("получение списка врачей по URL: %s", fullURL)
-
-	req, err := http.NewRequest(http.MethodGet, fullURL, nil)
+	// Создаем запрос без тела
+	req, err := http.NewRequest(http.MethodPost, reqURL, nil)
 	if err != nil {
 		logger.Errorf("создание запроса: %v", err)
 		return nil, utils.NewUserErrorResponse(
@@ -90,7 +80,7 @@ func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErr
 		)
 	}
 
-	var response GetDoctorsResponse
+	var response CreatePatientResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		logger.Errorf("десериализация ответа: %v", err)
 		return nil, utils.NewUserErrorResponse(

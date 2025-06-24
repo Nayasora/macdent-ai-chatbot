@@ -9,38 +9,44 @@ import (
 	"net/url"
 )
 
-type GetDoctorsRequest struct {
+type GetScheduleRequest struct {
 	AccessToken string `json:"access_token"`
-	FullName    string `json:"name"`
 }
 
-type Doctor struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Specialnosti []string `json:"specialnosti"`
+type TimeInterval struct {
+	Start string `json:"start"`
+	End   string `json:"end"`
 }
 
-type GetDoctorsResponse struct {
-	Doctors  []Doctor `json:"doctors"`
-	Count    string   `json:"count"`
-	AtPage   int      `json:"atPage"`
-	MaxPage  int      `json:"maxPage"`
-	Response int      `json:"response"`
+type DaySchedule map[string][]TimeInterval
+
+type Schedule struct {
+	ID         int         `json:"id"`
+	Year       int         `json:"year"`
+	Month      int         `json:"month"`
+	Cabinet    string      `json:"cabinet"`
+	DoctorID   int         `json:"doctor"`
+	PerDayData DaySchedule `json:"perDayData"`
 }
 
-func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErrorResponse) {
-	logger := utils.NewLogger("clients:getDoctors")
+type GetScheduleResponse struct {
+	Schedules []Schedule `json:"rasps"`
+	Count     string     `json:"count"`
+	AtPage    int        `json:"atPage"`
+	MaxPage   int        `json:"maxPage"`
+	Response  int        `json:"response"`
+}
 
-	baseURL := BaseURL + "doctor/find"
+func GetSchedule(request *GetScheduleRequest) (*GetScheduleResponse, *utils.UserErrorResponse) {
+	logger := utils.NewLogger("clients:GetSchedule")
+
+	baseURL := BaseURL + "rasp/find"
 
 	params := url.Values{}
 	params.Add("access_token", request.AccessToken)
-	if request.FullName != "" {
-		params.Add("name", request.FullName)
-	}
 
 	fullURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
-	logger.Infof("получение списка врачей по URL: %s", fullURL)
+	logger.Infof("получение списка расписания по URL: %s", fullURL)
 
 	req, err := http.NewRequest(http.MethodGet, fullURL, nil)
 	if err != nil {
@@ -90,7 +96,7 @@ func GetDoctors(request *GetDoctorsRequest) (*GetDoctorsResponse, *utils.UserErr
 		)
 	}
 
-	var response GetDoctorsResponse
+	var response GetScheduleResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		logger.Errorf("десериализация ответа: %v", err)
 		return nil, utils.NewUserErrorResponse(
