@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"macdent-ai-chatbot/v2/utils"
 	"strings"
 	"time"
 )
@@ -10,28 +11,29 @@ type GetModelsRequest struct {
 	ApiKey string `json:"api_key" validate:"required,min=144"`
 }
 
-type GetModelsErrorResponse struct {
-	StatusCode int
-	Message    string
-	Details    string
-}
-
-func (s *Service) GetModels() ([]string, *GetModelsErrorResponse) {
+func (s *Service) GetModels() ([]string, *utils.UserErrorResponse) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	list, err := s.client.Models.List(ctx)
+	list, err := s.Client.Models.List(ctx)
 
 	if err != nil {
 		errMsg := strings.ToLower(err.Error())
 		if strings.Contains(errMsg, "invalid_api_key") {
-			return nil, &GetModelsErrorResponse{
-				StatusCode: 400,
-				Message:    "Неверный API ключ",
-			}
+			return nil, utils.NewUserErrorResponse(
+				400,
+				"Неверный API ключ",
+				"Пожалуйста, проверьте ваш API ключ и попробуйте снова.",
+			)
 		}
 
-		s.log.Fatalf("получение списка моделей %s", err)
+		s.loggger.Errorf("получение списка моделей %s", err)
+
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка получения моделей",
+			"Произошла ошибка при получении списка моделей. Пожалуйста, попробуйте позже.",
+		)
 	}
 
 	var names []string

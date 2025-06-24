@@ -28,7 +28,7 @@ func NewServer(cfg *configs.ApiServerConfig) *Server {
 
 	app.Use(logger.New(logger.Config{
 		Done: func(c fiber.Ctx, logString []byte) {
-			customLogger.Info(logString)
+			customLogger.Info(string(logString))
 		},
 	}))
 
@@ -77,7 +77,7 @@ func (s *Server) Setup() {
 	// Получение конкретного агента
 	agents.Get("/:id", agentHandler.GetAgent)
 	// Обновление агента
-	agents.Put("/:id", agentHandler.UpdateAgent)
+	agents.Patch("/:id", agentHandler.UpdateAgent)
 	// Удаление агента
 	agents.Delete("/:id", agentHandler.DeleteAgent)
 
@@ -90,22 +90,20 @@ func (s *Server) Setup() {
 
 	// Получение диалогов агента
 	agents.Get("/:id/dialogs", agentHandler.GetDialogs)
-	// Удаление всех диалогов агента
-	agents.Delete("/:id/dialogs", agentHandler.DeleteDialogs)
-	// Создание диалога
-	agents.Post("/:id/dialogs", agentHandler.CreateDialog)
 	// Запрос на ответ диалогу
-	agents.Post("/:id/dialogs/:dialog_id", agentHandler.ResponseDialog)
-	// Получение конкретного диалога
-	agents.Get("/:id/dialogs/:dialog_id", agentHandler.GetDialog)
-	// Удаление конкретного диалога
-	agents.Delete("/:id/dialogs/:dialog_id", agentHandler.DeleteDialog)
+	agents.Post("/:id/dialogs", agentHandler.ResponseDialog)
 
 	openaiHandler := NewOpenAIHandler()
 	openai := api.Group("/openai")
 
 	// Получение доступных моделей для агента
 	openai.Get("/models", openaiHandler.GetModels)
+
+	mockHandler := NewMockHandler()
+	mock := api.Group("/mocks")
+
+	// Получение списка докторов
+	mock.Get("/doctors", mockHandler.GetDoctors)
 }
 
 func (s *Server) Run() {

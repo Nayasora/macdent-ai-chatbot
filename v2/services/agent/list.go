@@ -1,42 +1,50 @@
 package agent
 
 import (
+	"errors"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 	"macdent-ai-chatbot/v2/databases"
 	"macdent-ai-chatbot/v2/models"
+	"macdent-ai-chatbot/v2/utils"
 )
-
-type GetAgentRequest struct {
-	AgentID string `json:"agent_id"`
-}
 
 type GetAgentsRequest struct {
 	Limit  int `json:"limit"`
 	Offset int `json:"offset"`
 }
 
-func (s *Service) GetAgent(request *GetAgentRequest, postgres *databases.PostgresDatabase) *models.Agent {
+func (s *Service) GetAgent(agentID uuid.UUID, postgres *databases.PostgresDatabase) (*models.Agent, *utils.UserErrorResponse) {
 	var agent models.Agent
 
-	// Преобразуем строковый ID в UUID
-	id, err := uuid.Parse(request.AgentID)
-	if err != nil {
-		s.logger.Fatalf("неверный формат ID агента: %v", err)
-	}
-
-	err = postgres.DB.
+	err := postgres.DB.
 		Preload("Permission").
-		Where("id = ?", id).
+		Where("id = ?", agentID).
 		First(&agent).Error
 
 	if err != nil {
-		s.logger.Fatalf("получение агента: %v", err)
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Infof("агент с ID %s не найден", agentID)
+			return nil, utils.NewUserErrorResponse(
+				404,
+				"Агент не найден",
+				"Указанный агент не существует или был удален.",
+			)
+		}
+
+		s.logger.Errorf("получение агента: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка получения агента",
+			"Пожалуйста, повторите попытку позже",
+		)
 	}
 
-	return &agent
+	return &agent, nil
 }
 
-func (s *Service) GetAgents(request *GetAgentsRequest, postgres *databases.PostgresDatabase) []*models.Agent {
+func (s *Service) GetAgents(request *GetAgentsRequest, postgres *databases.PostgresDatabase) ([]*models.Agent, *utils.UserErrorResponse) {
 	var agents []*models.Agent
 
 	if request.Limit <= 0 {
@@ -51,8 +59,13 @@ func (s *Service) GetAgents(request *GetAgentsRequest, postgres *databases.Postg
 		Find(&agents).Error
 
 	if err != nil {
-		s.logger.Fatalf("получение списка агентов: %v", err)
+		s.logger.Errorf("получение списка агентов: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка получения списка агентов",
+			"Пожалуйста, повторите попытку позже",
+		)
 	}
 
-	return agents
+	return agents, nil
 }

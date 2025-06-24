@@ -8,6 +8,7 @@ import (
 	"macdent-ai-chatbot/v2/configs"
 	"macdent-ai-chatbot/v2/databases"
 	"macdent-ai-chatbot/v2/services/agent"
+	"macdent-ai-chatbot/v2/services/dialog"
 )
 
 type AgentHandler struct {
@@ -50,8 +51,15 @@ func (h *AgentHandler) CreateAgent(c fiber.Ctx) error {
 		})
 	}
 
-	newAgent := agent.NewService().
+	newAgent, errorResponse := agent.NewService().
 		CreateAgent(&request, h.postgres)
+
+	if errorResponse != nil {
+		return c.Status(errorResponse.StatusCode).JSON(fiber.Map{
+			"ошибка": errorResponse.Message,
+			"детали": errorResponse.Details,
+		})
+	}
 
 	return c.Status(201).JSON(fiber.Map{
 		"data": newAgent,
@@ -67,8 +75,26 @@ func (h *AgentHandler) GetAgents(c fiber.Ctx) error {
 		})
 	}
 
-	agents := agent.NewService().
+	err := h.validator.Struct(&request)
+	var validationErrors validator.ValidationErrors
+	errors.As(err, &validationErrors)
+
+	if err != nil && len(validationErrors) > 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неправильные данные запроса",
+			"детали": validationErrors.Error(),
+		})
+	}
+
+	agents, errorResponse := agent.NewService().
 		GetAgents(&request, h.postgres)
+
+	if errorResponse != nil {
+		return c.Status(errorResponse.StatusCode).JSON(fiber.Map{
+			"ошибка": errorResponse.Message,
+			"детали": errorResponse.Details,
+		})
+	}
 
 	return c.Status(200).JSON(fiber.Map{
 		"data": agents,
@@ -76,16 +102,64 @@ func (h *AgentHandler) GetAgents(c fiber.Ctx) error {
 }
 
 func (h *AgentHandler) GetAgent(c fiber.Ctx) error {
-	// TODO: Реализовать получение конкретного агента
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"сообщение": "Метод не реализован",
+	agentID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неверный формат ID агента",
+		})
+	}
+
+	agents, errorResponse := agent.NewService().
+		GetAgent(agentID, h.postgres)
+
+	if errorResponse != nil {
+		return c.Status(errorResponse.StatusCode).JSON(fiber.Map{
+			"ошибка": errorResponse.Message,
+			"детали": errorResponse.Details,
+		})
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"data": agents,
 	})
 }
 
 func (h *AgentHandler) UpdateAgent(c fiber.Ctx) error {
-	// TODO: Реализовать обновление агента
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"сообщение": "Метод не реализован",
+	agentID := c.Params("id")
+
+	var request agent.UpdateAgentRequest
+	request.AgentID = agentID
+
+	if err := c.Bind().JSON(&request); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неправильное тело запроса",
+			"детали": err.Error(),
+		})
+	}
+
+	err := h.validator.Struct(&request)
+	var validationErrors validator.ValidationErrors
+	errors.As(err, &validationErrors)
+
+	if err != nil && len(validationErrors) > 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неправильные данные запроса",
+			"детали": validationErrors.Error(),
+		})
+	}
+
+	updatedAgent, errorResponse := agent.NewService().
+		UpdateAgent(&request, h.postgres)
+
+	if errorResponse != nil {
+		return c.Status(errorResponse.StatusCode).JSON(fiber.Map{
+			"ошибка": errorResponse.Message,
+			"детали": errorResponse.Details,
+		})
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"data": updatedAgent,
 	})
 }
 
@@ -104,13 +178,18 @@ func (h *AgentHandler) UploadKnowledge(c fiber.Ctx) error {
 		})
 	}
 
-	agent.NewService().
+	_, errorResponse := agent.NewService().
 		GetAgent(
-			&agent.GetAgentRequest{
-				AgentID: agentID.String(),
-			},
+			agentID,
 			h.postgres,
 		)
+
+	if errorResponse != nil {
+		return c.Status(errorResponse.StatusCode).JSON(fiber.Map{
+			"ошибка": errorResponse.Message,
+			"детали": errorResponse.Details,
+		})
+	}
 
 	form, err := c.MultipartForm()
 	if err != nil {
@@ -167,9 +246,41 @@ func (h *AgentHandler) CreateDialog(c fiber.Ctx) error {
 }
 
 func (h *AgentHandler) ResponseDialog(c fiber.Ctx) error {
-	// TODO: Реализовать запрос на ответ в диалоге
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"сообщение": "Метод не реализован",
+	agentID := c.Params("id")
+
+	var request dialog.UserDialogNewMessageRequest
+	request.AgentID = agentID
+
+	if err := c.Bind().JSON(&request); err != nil {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неправильное тело запроса",
+			"детали": err.Error(),
+		})
+	}
+
+	err := h.validator.Struct(&request)
+	var validationErrors validator.ValidationErrors
+	errors.As(err, &validationErrors)
+
+	if err != nil && len(validationErrors) > 0 {
+		return c.Status(400).JSON(fiber.Map{
+			"ошибка": "Неправильные данные запроса",
+			"детали": validationErrors.Error(),
+		})
+	}
+
+	agentMessage, errorResponse := dialog.NewService().
+		ResponseDialogNewMessageRequest(&request, h.postgres)
+
+	if errorResponse != nil {
+		return c.Status(errorResponse.StatusCode).JSON(fiber.Map{
+			"ошибка": errorResponse.Message,
+			"детали": errorResponse.Details,
+		})
+	}
+
+	return c.Status(200).JSON(fiber.Map{
+		"data": agentMessage,
 	})
 }
 

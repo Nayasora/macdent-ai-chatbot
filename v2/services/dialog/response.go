@@ -1,0 +1,133 @@
+package dialog
+
+import (
+	"context"
+	"github.com/google/uuid"
+	"github.com/openai/openai-go"
+	"macdent-ai-chatbot/v2/databases"
+	"macdent-ai-chatbot/v2/models"
+	"macdent-ai-chatbot/v2/services/agent"
+	openai2 "macdent-ai-chatbot/v2/services/openai"
+	"macdent-ai-chatbot/v2/services/tool"
+	"macdent-ai-chatbot/v2/utils"
+	"time"
+)
+
+type UserDialogNewMessageRequest struct {
+	AgentID string `json:"agent_id" validate:"required,uuid"`
+	UserID  string `json:"user_id" validate:"required"`
+	Message string `json:"message" validate:"required,max=1000"`
+}
+
+func (s *Service) ResponseDialogNewMessageRequest(
+	request *UserDialogNewMessageRequest,
+	postgres *databases.PostgresDatabase,
+) (string, *utils.UserErrorResponse) {
+	agentUUID, _ := uuid.Parse(request.AgentID)
+
+	currentAgent, errorResponse := agent.NewService().
+		GetAgent(agentUUID, postgres)
+
+	if errorResponse != nil {
+		return "", errorResponse
+	}
+
+	var messages []openai.ChatCompletionMessageParamUnion
+
+	if currentAgent.SystemPrompt != "" {
+		messages = append(messages, openai.SystemMessage(currentAgent.SystemPrompt))
+	}
+	if currentAgent.UserPrompt != "" {
+		messages = append(messages, openai.SystemMessage(currentAgent.UserPrompt))
+	}
+
+	messages = append(messages, openai.UserMessage(request.Message))
+
+	s.logger.Infof("сообщения для OpenAI: %v", messages)
+
+	toolService := tool.NewService(currentAgent)
+	chatCompletionParams := s.GetChatCompletionParams(currentAgent, messages)
+	chatCompletionParams.Tools = openai.F(toolService.GetToolsFunctions())
+	completion, err := s.QueryCompletion(currentAgent, chatCompletionParams)
+
+	if err != nil {
+		return "", err
+	}
+
+	toolMessage := completion.Choices[0].Message
+	s.logger.Infof("ответ OpenAI: %v", toolMessage)
+
+	if toolService.HasToolCalls(toolMessage.ToolCalls) {
+
+		toolResults := toolService.ExecuteToolCalls(messages, toolMessage)
+
+		chatCompletionParams := s.GetChatCompletionParams(currentAgent, toolResults)
+		completionWithResults, err := s.QueryCompletion(currentAgent, chatCompletionParams)
+
+		if err != nil {
+			return "", err
+		}
+
+		return completionWithResults.Choices[0].Message.Content, nil
+	}
+
+	return completion.Choices[0].Message.Content, nil
+}
+
+func (s *Service) GetChatCompletionParams(agent *models.Agent, messages []openai.ChatCompletionMessageParamUnion) openai.ChatCompletionNewParams {
+	return openai.ChatCompletionNewParams{
+		Model:               openai.F(agent.Model),
+		Messages:            openai.F(messages),
+		Temperature:         openai.F(agent.Temperature),
+		Modalities:          openai.F([]openai.ChatCompletionModality{openai.ChatCompletionModalityText}),
+		MaxCompletionTokens: openai.F(int64(agent.MaxCompletionTokens)),
+	}
+}
+
+func (s *Service) QueryCompletion(agent *models.Agent, completionParams openai.ChatCompletionNewParams) (*openai.ChatCompletion, *utils.UserErrorResponse) {
+	openaiService := openai2.NewService(agent.APIKey)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	completion, err := openaiService.Client.Chat.Completions.New(ctx, completionParams)
+
+	if err != nil {
+		s.logger.Errorf("запрос к OpenAI с результатами инструментов: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка обработки сообщения",
+			"Не удалось обработать ваше сообщение. Пожалуйста, попробуйте позже.",
+		)
+	}
+
+	if len(completion.Choices) == 0 {
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Пустой ответ",
+			"Сервис не смог сформировать ответ на ваше сообщение. Пожалуйста, перефразируйте или попробуйте позже.",
+		)
+	}
+
+	return completion, nil
+}
+
+func (s *Service) processToolCalls(
+	currentAgent *models.Agent,
+	messages []openai.ChatCompletionMessageParamUnion,
+	assistantMessage openai.ChatCompletionMessage,
+) (string, *utils.UserErrorResponse) {
+	var toolResults []openai.ChatCompletionMessageParamUnion
+
+	toolResults = append(toolResults, messages...)
+	toolResults = append(toolResults, assistantMessage)
+
+	chatCompletionParams := s.GetChatCompletionParams(currentAgent, toolResults)
+	completionWithResults, err := s.QueryCompletion(currentAgent, chatCompletionParams)
+
+	if err != nil {
+		return "", err
+	}
+
+	return completionWithResults.Choices[0].Message.Content, nil
+}

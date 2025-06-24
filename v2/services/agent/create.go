@@ -3,18 +3,19 @@ package agent
 import (
 	"macdent-ai-chatbot/v2/databases"
 	"macdent-ai-chatbot/v2/models"
+	"macdent-ai-chatbot/v2/utils"
 )
 
 type CreateAgentRequest struct {
-	APIKey       string             `json:"api_key" validate:"required,min=144"`
-	Model        string             `json:"model" validate:"required"`
-	SystemPrompt string             `json:"system_prompt"`
-	UserPrompt   string             `json:"user_prompt"`
-	ContextSize  int                `json:"context_size"`
-	Temperature  float32            `json:"temperature"`
-	TopP         float32            `json:"top_p"`
-	MaxTokens    int                `json:"max_tokens"`
-	Permissions  PermissionsRequest `json:"permissions"`
+	APIKey              string             `json:"api_key" validate:"required,min=144"`
+	Model               string             `json:"model" validate:"required"`
+	SystemPrompt        string             `json:"system_prompt"`
+	UserPrompt          string             `json:"user_prompt"`
+	ContextSize         int                `json:"context_size"`
+	Temperature         float64            `json:"temperature"`
+	TopP                float64            `json:"top_p"`
+	MaxCompletionTokens int                `json:"max_completion_tokens"`
+	Permissions         PermissionsRequest `json:"permissions"`
 }
 
 type PermissionsRequest struct {
@@ -23,16 +24,15 @@ type PermissionsRequest struct {
 	Appointments bool `json:"appointments"`
 }
 
-func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.PostgresDatabase) *models.Agent {
+func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.PostgresDatabase) (*models.Agent, *utils.UserErrorResponse) {
 	agent := &models.Agent{
-		APIKey:       request.APIKey,
-		Model:        request.Model,
-		SystemPrompt: request.SystemPrompt,
-		UserPrompt:   request.UserPrompt,
-		ContextSize:  request.ContextSize,
-		Temperature:  request.Temperature,
-		TopP:         request.TopP,
-		MaxTokens:    request.MaxTokens,
+		APIKey:              request.APIKey,
+		Model:               request.Model,
+		SystemPrompt:        request.SystemPrompt,
+		UserPrompt:          request.UserPrompt,
+		ContextSize:         request.ContextSize,
+		Temperature:         request.Temperature,
+		MaxCompletionTokens: request.MaxCompletionTokens,
 	}
 
 	tx := postgres.DB.Begin()
@@ -45,7 +45,13 @@ func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.P
 
 	if err := tx.Create(agent).Error; err != nil {
 		tx.Rollback()
-		s.logger.Fatalf("создание агента: %v", err)
+
+		s.logger.Errorf("создание агента: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка создания агента",
+			"Пожалуйста, повторите попытку позже",
+		)
 	}
 
 	permission := &models.Permission{
@@ -57,18 +63,36 @@ func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.P
 
 	if err := tx.Create(permission).Error; err != nil {
 		tx.Rollback()
-		s.logger.Fatalf("создание разрешений: %v", err)
+
+		s.logger.Errorf("создание разрешений: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка создания агента",
+			"Пожалуйста, повторите попытку позже",
+		)
 	}
 
 	if err := tx.Model(agent).Association("Permission").Find(&agent.Permission); err != nil {
 		tx.Rollback()
-		s.logger.Fatalf("загрузка разрешений: %v", err)
+
+		s.logger.Errorf("загрузка разрешений: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка создания агента",
+			"Пожалуйста, повторите попытку позже",
+		)
 	}
 
 	if err := tx.Commit().Error; err != nil {
 		tx.Rollback()
-		s.logger.Fatalf("закрытие транзакций: %v", err)
+
+		s.logger.Errorf("закрытие транзакций: %v", err)
+		return nil, utils.NewUserErrorResponse(
+			500,
+			"Ошибка создания агента",
+			"Пожалуйста, повторите попытку позже",
+		)
 	}
 
-	return agent
+	return agent, nil
 }
