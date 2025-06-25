@@ -47,7 +47,6 @@ func (s *Service) ResponseDialogNewMessageRequest(
 
 	toolService := tool.NewService(currentAgent)
 
-	// Рекурсивно обрабатываем сообщения и инструменты
 	return s.processMessagesWithTools(currentAgent, messages, toolService)
 }
 
@@ -68,14 +67,11 @@ func (s *Service) processMessagesWithTools(
 	s.logger.Infof("ответ OpenAI: %v", toolMessage)
 
 	if toolService.HasToolCalls(toolMessage.ToolCalls) {
-		// Выполняем инструменты и получаем обновленный список сообщений
 		updatedMessages := toolService.ExecuteToolCalls(messages, toolMessage)
 
-		// Рекурсивно обрабатываем обновленный список сообщений
 		return s.processMessagesWithTools(agent, updatedMessages, toolService)
 	}
 
-	// Если нет вызовов инструментов, возвращаем окончательный ответ
 	return toolMessage.Content, nil
 }
 

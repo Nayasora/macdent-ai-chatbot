@@ -11,9 +11,10 @@ type Permission struct {
 	AgentID uuid.UUID `json:"agent_id" gorm:"type:uuid;primary_key;not null"`
 
 	// Разрешения по модулям
-	Stomatology  bool `json:"stomatology" gorm:"default:false;not null"`
-	Doctors      bool `json:"doctors" gorm:"default:false;not null"`
-	Appointments bool `json:"appointments" gorm:"default:false;not null"`
+	Stomatology bool `json:"stomatology" gorm:"default:false;not null"`
+	Doctors     bool `json:"doctors" gorm:"default:false;not null"`
+	Appointment bool `json:"appointment" gorm:"default:false;not null"`
+	Schedule    bool `json:"schedule" gorm:"default:false;not null"`
 
 	// Метаданные
 	CreatedAt time.Time `json:"created_at" gorm:"not null;autoCreateTime"`

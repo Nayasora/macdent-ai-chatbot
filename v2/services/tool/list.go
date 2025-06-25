@@ -5,8 +5,11 @@ import "github.com/openai/openai-go"
 func (s *Service) GetToolsFunctions() []openai.ChatCompletionToolParam {
 	s.logger.Info("получение списка функций инструментов")
 
-	return []openai.ChatCompletionToolParam{
-		{
+	agentPermission := s.Agent.Permission
+	var completionTools []openai.ChatCompletionToolParam
+
+	if agentPermission.Doctors {
+		completionTools = append(completionTools, openai.ChatCompletionToolParam{
 			Type: openai.F(openai.ChatCompletionToolTypeFunction),
 			Function: openai.F(openai.FunctionDefinitionParam{
 				Name:        openai.F("get_doctors"),
@@ -20,8 +23,13 @@ func (s *Service) GetToolsFunctions() []openai.ChatCompletionToolParam {
 					},
 				}),
 			}),
-		},
-		{
+		})
+	} else {
+		s.logger.Info("агент не имеет доступа к: врачам")
+	}
+
+	if agentPermission.Schedule {
+		completionTools = append(completionTools, openai.ChatCompletionToolParam{
 			Type: openai.F(openai.ChatCompletionToolTypeFunction),
 			Function: openai.F(openai.FunctionDefinitionParam{
 				Name:        openai.F("get_schedule"),
@@ -31,23 +39,13 @@ func (s *Service) GetToolsFunctions() []openai.ChatCompletionToolParam {
 					"properties": map[string]interface{}{},
 				}),
 			}),
-		},
-		{
-			Type: openai.F(openai.ChatCompletionToolTypeFunction),
-			Function: openai.F(openai.FunctionDefinitionParam{
-				Name:        openai.F("create_patient"),
-				Description: openai.String("Создает пациента"),
-				Parameters: openai.F(openai.FunctionParameters{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"name": map[string]string{
-							"type": "string",
-						},
-					},
-				}),
-			}),
-		},
-		{
+		})
+	} else {
+		s.logger.Info("агент не имеет доступа к: расписанию")
+	}
+
+	if agentPermission.Appointment {
+		completionTools = append(completionTools, openai.ChatCompletionToolParam{
 			Type: openai.F(openai.ChatCompletionToolTypeFunction),
 			Function: openai.F(openai.FunctionDefinitionParam{
 				Name:        openai.F("create_appointment"),
@@ -75,6 +73,26 @@ func (s *Service) GetToolsFunctions() []openai.ChatCompletionToolParam {
 					},
 				}),
 			}),
-		},
+		})
+
+		completionTools = append(completionTools, openai.ChatCompletionToolParam{
+			Type: openai.F(openai.ChatCompletionToolTypeFunction),
+			Function: openai.F(openai.FunctionDefinitionParam{
+				Name:        openai.F("create_patient"),
+				Description: openai.String("Создает пациента"),
+				Parameters: openai.F(openai.FunctionParameters{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"name": map[string]string{
+							"type": "string",
+						},
+					},
+				}),
+			}),
+		})
+	} else {
+		s.logger.Info("агент не имеет доступа к: создание записи")
 	}
+
+	return completionTools
 }

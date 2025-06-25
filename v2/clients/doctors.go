@@ -14,10 +14,15 @@ type GetDoctorsRequest struct {
 	FullName    string `json:"name"`
 }
 
+type Specialty struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
+}
+
 type Doctor struct {
-	ID           int      `json:"id"`
-	Name         string   `json:"name"`
-	Specialnosti []string `json:"specialnosti"`
+	ID          int         `json:"id"`
+	Name        string      `json:"name"`
+	Specialties []Specialty `json:"specialnosti"`
 }
 
 type GetDoctorsResponse struct {

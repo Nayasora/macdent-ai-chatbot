@@ -14,6 +14,10 @@ type Service struct {
 	logger *log.Logger
 }
 
+type AgentArgumentError struct {
+	Message string `json:"message"`
+}
+
 func NewService(agent *models.Agent) *Service {
 	logger := utils.NewLogger("tool")
 
@@ -72,14 +76,30 @@ func (s *Service) ExecuteToolCalls(messages []openai.ChatCompletionMessageParamU
 			var args map[string]interface{}
 			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 				s.logger.Errorf("разбор аргументов инструмента create_patient: %v", err)
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, `{"error": "Не удалось разобрать аргументы"}`))
+
+				errorObj := AgentArgumentError{Message: "Не удалось разобрать аргументы"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
 			name, ok := args["name"].(string)
 			if !ok || name == "" {
 				s.logger.Errorf("отсутствует имя пациента")
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, `{"error": "Необходимо указать имя пациента"}`))
+
+				errorObj := AgentArgumentError{Message: "Необходимо указать имя пациента"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
@@ -136,49 +156,93 @@ func (s *Service) ExecuteToolCalls(messages []openai.ChatCompletionMessageParamU
 		case "create_appointment":
 			s.logger.Info("вызов инструмента create_appointment")
 
-			// Извлечение аргументов из вызова инструмента
 			var args map[string]interface{}
 			if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &args); err != nil {
 				s.logger.Errorf("разбор аргументов инструмента create_appointment: %v", err)
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, `{"error": "Не удалось разобрать аргументы"}`))
+
+				errorObj := AgentArgumentError{Message: "Не удалось разобрать аргументы"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
-			// Преобразование аргументов в нужные типы
 			patientID, ok := args["patient"].(float64)
 			if !ok {
 				s.logger.Errorf("неверный формат ID пациента: %v", args["patient"])
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID,
-					`{"error": "Не указан ID пациента. Сначала создайте пациента с помощью инструмента create_patient и используйте полученный ID"}`))
+
+				errorObj := AgentArgumentError{Message: "Не указан ID пациента. Сначала создайте пациента с помощью инструмента create_patient и используйте полученный ID"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
 			doctorID, ok := args["doctor"].(float64)
 			if !ok {
 				s.logger.Errorf("неверный формат ID врача: %v", args["doctor"])
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID,
-					`{"error": "Не указан ID врача. Сначала получите список врачей с помощью инструмента get_doctors и выберите нужный ID"}`))
+
+				errorObj := AgentArgumentError{Message: "Не указан ID врача. Сначала получите список врачей с помощью инструмента get_doctors и выберите нужный ID"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
 			date, ok := args["date"].(string)
 			if !ok {
 				s.logger.Errorf("неверный формат даты: %v", args["date"])
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, `{"error": "Неверный формат даты"}`))
+
+				errorObj := AgentArgumentError{Message: "Неверный формат даты"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
 			start, ok := args["start"].(string)
 			if !ok {
 				s.logger.Errorf("неверный формат времени начала: %v", args["start"])
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, `{"error": "Неверный формат времени начала"}`))
+
+				errorObj := AgentArgumentError{Message: "Неверный формат времени начала"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 
 			end, ok := args["end"].(string)
 			if !ok {
 				s.logger.Errorf("неверный формат времени окончания: %v", args["end"])
-				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, `{"error": "Неверный формат времени окончания"}`))
+
+				errorObj := AgentArgumentError{Message: "Неверный формат времени окончания"}
+				errorJSON, err := json.Marshal(errorObj)
+				if err != nil {
+					s.logger.Errorf("создание json: %v", err)
+					continue
+				}
+
+				toolResults = append(toolResults, openai.ToolMessage(toolCall.ID, string(errorJSON)))
 				continue
 			}
 

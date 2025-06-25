@@ -25,9 +25,10 @@ type CreateAgentRequest struct {
 }
 
 type PermissionsRequest struct {
-	Stomatology  bool `json:"stomatology"`
-	Doctors      bool `json:"doctors"`
-	Appointments bool `json:"appointments"`
+	Stomatology bool `json:"stomatology"`
+	Doctors     bool `json:"doctors"`
+	Appointment bool `json:"appointment"`
+	Schedule    bool `json:"schedule"`
 }
 
 func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.PostgresDatabase) (*models.Agent, *utils.UserErrorResponse) {
@@ -64,10 +65,11 @@ func (s *Service) CreateAgent(request *CreateAgentRequest, postgres *databases.P
 	}
 
 	permission := &models.Permission{
-		AgentID:      agent.ID,
-		Stomatology:  request.Permissions.Stomatology,
-		Doctors:      request.Permissions.Doctors,
-		Appointments: request.Permissions.Appointments,
+		AgentID:     agent.ID,
+		Stomatology: request.Permissions.Stomatology,
+		Doctors:     request.Permissions.Doctors,
+		Appointment: request.Permissions.Appointment,
+		Schedule:    request.Permissions.Schedule,
 	}
 
 	if err := tx.Create(permission).Error; err != nil {

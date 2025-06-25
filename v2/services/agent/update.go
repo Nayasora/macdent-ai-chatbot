@@ -67,7 +67,7 @@ func (s *Service) UpdateAgent(request *UpdateAgentRequest, postgres *databases.P
 
 	agent.Permission.Stomatology = request.Permissions.Stomatology
 	agent.Permission.Doctors = request.Permissions.Doctors
-	agent.Permission.Appointments = request.Permissions.Appointments
+	agent.Permission.Appointment = request.Permissions.Appointment
 
 	tx := postgres.DB.Begin()
 	defer func() {
