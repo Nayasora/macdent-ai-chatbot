@@ -8,8 +8,8 @@ import (
 )
 
 type Service struct {
-	Client  *openai.Client
-	loggger *log.Logger
+	Client *openai.Client
+	logger *log.Logger
 }
 
 func NewService(apiKey string) *Service {
@@ -20,7 +20,7 @@ func NewService(apiKey string) *Service {
 	)
 
 	return &Service{
-		Client:  client,
-		loggger: customLogger,
+		Client: client,
+		logger: customLogger,
 	}
 }

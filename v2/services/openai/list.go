@@ -27,7 +27,7 @@ func (s *Service) GetModels() ([]string, *utils.UserErrorResponse) {
 			)
 		}
 
-		s.loggger.Errorf("получение списка моделей %s", err)
+		s.logger.Errorf("получение списка моделей %s", err)
 
 		return nil, utils.NewUserErrorResponse(
 			500,

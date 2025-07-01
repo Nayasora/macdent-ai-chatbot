@@ -8,7 +8,7 @@ import (
 )
 
 type QdrantDatabase struct {
-	client *qdrant.Client
+	Client *qdrant.Client
 }
 
 func NewQdrant(config *configs.QdrantConfig) *QdrantDatabase {
@@ -29,6 +29,6 @@ func NewQdrant(config *configs.QdrantConfig) *QdrantDatabase {
 	}
 
 	return &QdrantDatabase{
-		client: client,
+		Client: client,
 	}
 }
