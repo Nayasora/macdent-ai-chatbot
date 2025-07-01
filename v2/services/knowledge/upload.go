@@ -63,20 +63,20 @@ func (s *Service) UploadKnowledge(request *UploadKnowledgeRequest) *utils.UserEr
 		return errorResponse
 	}
 
-	// Загрузка поинтов в Qdrant
-	//errorResponse = s.UpsertPoints(ctx, agentUUID, []*qdrant.PointStruct{})
-	//if errorResponse != nil {
-	//	return errorResponse
-	//}
-
 	openaiService := openai2.NewService(currentAgent.APIKey)
-	_, errorResponse = s.PrepareContent(openaiService, string(knowledgeContent))
+	results, errorResponse := s.PrepareContent(openaiService, string(knowledgeContent), agentUUID)
 	if errorResponse != nil {
 		return errorResponse
 	}
 
-	s.logger.Infof("создание file knowledge для агента %s", request.AgentID)
+	errorResponse = s.UpsertChunks(ctx, agentUUID, results)
+	if errorResponse != nil {
+		return errorResponse
+	}
 
+	s.CreateKnowledgeFile(agentUUID, request.Files, len(results))
+
+	s.logger.Infof("успешно загружено %d чанков для агента %s", len(results), request.AgentID)
 	return nil
 }
 
@@ -106,4 +106,22 @@ func (s *Service) CreatePromptKnowledge(content string, agentUUID uuid.UUID) {
 	s.postgres.DB.Create(&knowledgePrompt)
 	s.logger.Infof("создание prompt knowledge для агента %s", agentUUID.String())
 	s.logger.Infof("контент knowledge: %s", knowledgePrompt.Prompt)
+}
+
+func (s *Service) CreateKnowledgeFile(agentID uuid.UUID, files []Knowledge, chunkCount int) {
+	for _, file := range files {
+		knowledgeFile := models.KnowledgeFile{
+			AgentID:        agentID,
+			FileName:       file.Name,
+			OriginalName:   file.Name,
+			FileSize:       file.Size,
+			FileType:       file.Type,
+			CollectionName: agentID.String(),
+			ChunkCount:     chunkCount,
+			Status:         "completed",
+			ProcessedAt:    &time.Time{},
+		}
+		*knowledgeFile.ProcessedAt = time.Now()
+		s.postgres.DB.Create(&knowledgeFile)
+	}
 }
