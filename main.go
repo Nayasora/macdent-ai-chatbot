@@ -1,7 +1,7 @@
 package main
 
-import "macdent-ai-chatbot/v2/api"
-import "macdent-ai-chatbot/v2/configs"
+import "macdent-ai-chatbot/internal/api"
+import "macdent-ai-chatbot/internal/configs"
 
 func main() {
 	config := configs.NewConfig(
